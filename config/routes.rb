@@ -9,18 +9,18 @@ Rails.application.routes.draw do
 
     delete "logout", to: "sessions#destroy"
 
-    get  "me", to: "users#me"
+    get "me", to: "users#me"
     patch "me", to: "users#update_me"
-    get  "users/search", to: "users#search"
+    get "users/search", to: "users#search"
 
-    #Conversations
+    # Conversations
     get "conversations", to: "conversations#index"
     post "conversations", to: "conversations#create"
     get "conversations/:id", to: "conversations#show"
     post "conversations/:id/read", to: "conversations#read"
 
-    #Messages
+    # Messages
     get "conversations/:id/messages", to: "messages#index"
     post "conversations/:id/messages", to: "messages#create"
-  end  
+  end
 end
