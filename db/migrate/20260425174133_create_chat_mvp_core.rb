@@ -62,7 +62,7 @@ class CreateChatMvpCore < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :messages, [:conversation_id, :created_at]
+    add_index :messages, [ :conversation_id, :created_at ]
 
     create_table :conversation_members do |t|
       t.references :conversation, null: false, foreign_key: true
@@ -72,7 +72,7 @@ class CreateChatMvpCore < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :conversation_members, [:conversation_id, :user_id], unique: true
+    add_index :conversation_members, [ :conversation_id, :user_id ], unique: true
 
     create_table :message_links do |t|
       t.references :message, null: false, foreign_key: true

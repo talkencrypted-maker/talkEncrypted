@@ -31,3 +31,10 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Ignore editor/IDE settings.
+/.vscode/
+/.idea/
+
+# Ignore macOS metadata files.
+.DS_Store
+
