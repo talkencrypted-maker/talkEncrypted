@@ -817,6 +817,60 @@ When the socket reconnects, the client should refresh server state through REST:
 - Call `GET /api/conversations` to refresh the inbox.
 - If a chat screen is open, call `GET /api/conversations/:conversation_id/messages` to refresh message history.
 
+## Good to Have Features
+
+### URL Tracking Parameter Stripping
+
+When a user sends a message containing a URL, the backend should strip known tracking query parameters from the URL before storing it and before fetching the link preview. This protects user privacy by preventing recipients (and the link preview fetcher) from leaking tracking identifiers to third-party servers.
+
+**When it applies:**
+
+- Triggered during link extraction, before `message_links` rows are written.
+- Applies to all URLs found in the message body.
+
+**Parameters to strip:**
+
+Common tracking parameters that should be removed:
+
+```text
+# UTM parameters (Google Analytics / marketing campaigns)
+utm_source, utm_medium, utm_campaign, utm_term, utm_content, utm_id
+
+# Click IDs
+gclid       # Google Ads
+fbclid      # Facebook
+msclkid     # Microsoft Ads
+ttclid      # TikTok
+twclid      # Twitter / X
+li_fat_id   # LinkedIn
+mc_eid      # Mailchimp
+igshid      # Instagram
+
+# Miscellaneous
+ref, referrer, source, affiliate_id, campaign_id
+```
+
+**Behavior:**
+
+- Strip only query parameters. Never modify the URL scheme, host, path, or fragment.
+- Preserve all non-tracking query parameters so functional URLs remain intact (e.g. search queries, pagination, filters).
+- The cleaned URL is what gets stored in `message_links.url` and passed to the link preview job.
+- The original raw URL is never stored.
+- If stripping parameters results in a URL identical to the original, no special handling is needed.
+
+**Example:**
+
+```text
+Input:  https://example.com/article?utm_source=newsletter&utm_medium=email&id=42
+Output: https://example.com/article?id=42
+```
+
+**Implementation notes:**
+
+- Implement as a small pure utility (e.g. `UrlCleaner.clean(url)`) so it is easy to test in isolation.
+- The list of tracked parameters should be configurable (a constant or config file) so new ones can be added without code changes.
+- Invalid or unparseable URLs should be left unchanged and let the existing link preview failure path handle them.
+
 ## Future Implementation Tests
 
 - New-user OTP request requires a valid invite code.
