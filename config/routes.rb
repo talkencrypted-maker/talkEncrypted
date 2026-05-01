@@ -20,7 +20,7 @@ Rails.application.routes.draw do
     post "conversations/:id/read", to: "conversations#read"
 
     # Messages
-    get "conversations/:id/messages", to: "messages#index"
-    post "conversations/:id/messages", to: "messages#create"
+    get "conversations/:conversation_id/messages", to: "messages#index"
+    post "conversations/:conversation_id/messages", to: "messages#create"
   end
 end

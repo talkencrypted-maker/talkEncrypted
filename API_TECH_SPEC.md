@@ -871,6 +871,46 @@ Output: https://example.com/article?id=42
 - The list of tracked parameters should be configurable (a constant or config file) so new ones can be added without code changes.
 - Invalid or unparseable URLs should be left unchanged and let the existing link preview failure path handle them.
 
+### End-to-End Encryption (E2E)
+
+Currently, message bodies are encrypted at rest using Rails Active Record Encryption. This means the database stores ciphertext and the server decrypts on read — protecting against database breaches but not against a compromised server process.
+
+True end-to-end encryption (as used by Signal and WhatsApp) would mean the server never sees plaintext at all.
+
+**How it would work:**
+
+1. On signup, each device generates a public/private key pair
+2. The public key is uploaded to the server and stored against the user
+3. When Alice sends a message to Bob, her device encrypts the message body using Bob's public key
+4. The server stores and forwards the ciphertext without being able to read it
+5. Only Bob's device, using his private key, can decrypt the message
+
+**What changes:**
+
+- `messages.body` stores ciphertext encrypted by the sender's device
+- A new `user_public_keys` table stores each user's public key(s)
+- The server never calls `message.body` for content — only the client does
+- Link preview extraction becomes impossible (body is opaque to the server)
+- Search across message history becomes impossible server-side
+
+**Trade-offs:**
+
+| | Encryption at Rest (current) | E2E Encryption |
+|---|---|---|
+| DB breach protection | ✅ | ✅ |
+| Server compromise protection | ❌ | ✅ |
+| Link previews | ✅ | ❌ |
+| Server-side search | ✅ | ❌ |
+| Key loss recovery | ✅ | ❌ (messages lost forever) |
+| Implementation complexity | Low | High |
+
+**Implementation notes:**
+
+- Use the **Signal Protocol** or **libsodium** (`tweetnacl` in JS, `rbnacl` Ruby gem) for the crypto primitives
+- Key generation and encryption/decryption must happen on the client (browser or mobile app)
+- The backend API would need a new endpoint to exchange public keys before a conversation starts
+- Consider key rotation and multi-device support early — retrofitting these is painful
+
 ## Future Implementation Tests
 
 - New-user OTP request requires a valid invite code.

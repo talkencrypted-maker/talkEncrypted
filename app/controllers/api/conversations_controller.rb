@@ -4,6 +4,7 @@ class Api::ConversationsController < ApplicationController
   def index
     members = current_user.conversation_members.includes(conversation: [ :messages, :users ])
 
+
     conversations = []
     members.each do |member|
       conversations << member.conversation
