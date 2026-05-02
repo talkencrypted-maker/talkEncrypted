@@ -12,9 +12,12 @@ done
 echo "PostgreSQL is ready."
 
 # Create the database if it doesn't exist, then run any pending migrations
+echo "Running db:prepare..."
 bin/rails db:prepare
+echo "db:prepare completed successfully."
 
 # Load Solid Queue tables if they don't exist yet
+echo "Checking Solid Queue tables..."
 bin/rails runner "
 begin
   SolidQueue::Job.count
@@ -25,7 +28,8 @@ rescue ActiveRecord::StatementInvalid
   puts 'Solid Queue tables created.'
 end
 "
+echo "Solid Queue check completed."
 
+echo "Starting Rails server on port ${PORT:-3000}..."
 # Hand off to the main process (rails server or solid_queue:start)
-sleep 2
 exec "$@"
