@@ -25,17 +25,20 @@ class Api::Auth::OtpsController < ApplicationController
 
       raw_code = EmailOtp.create_for(email, purpose: "signup", invite_code: invite_code)
       Rails.logger.info "[OTP] Signup code for #{email}: #{raw_code}"
+      OtpMailer.signup_otp(email, raw_code).deliver_later
     else
       user = User.find_by(email: email)
 
       if user
         raw_code = EmailOtp.create_for(email, purpose: "login")
         Rails.logger.info "[OTP] Login code for #{email}: #{raw_code}"
+        OtpMailer.login_otp(email, raw_code).deliver_later
+
       end
       # Silent fail if user not found — prevents email enumeration
     end
 
-    render json: { message: "If this request is valid, a code has been sent." }
+    render json: { message: "A code has been sent to your email." }
   end
 
   def verify_otp
