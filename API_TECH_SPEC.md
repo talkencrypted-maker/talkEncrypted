@@ -12,6 +12,22 @@ The backend is a Rails API backed by PostgreSQL. It uses:
 - Link extraction and async link preview fetching through Solid Queue
 - Realtime events through Action Cable and Solid Cable
 
+## Conventions
+
+### Timestamps
+
+All timestamps in API responses and WebSocket events are ISO 8601 in UTC with a trailing `Z` suffix.
+
+```text
+2026-04-25T10:00:00Z
+```
+
+No other format is returned. Clients should parse strictly as UTC.
+
+### Identifiers
+
+All resource `id` fields are 64-bit signed integers. Within a single resource type (e.g., `messages`), IDs are monotonically increasing. This makes `before_id` cursor pagination on the messages endpoint safe to rely on.
+
 ## Product Flows
 
 ### First Signup
@@ -271,6 +287,29 @@ Common status codes:
 429 rate limited
 ```
 
+### Rate Limits
+
+The following endpoints are rate-limited. Exceeding a limit returns HTTP 429 with the standard error body and a `Retry-After` header (integer seconds until the limit resets).
+
+| Endpoint | Per-email | Per-IP |
+|---|---|---|
+| `POST /api/auth/otp/request` | 5 / hour | 20 / hour |
+| `POST /api/auth/otp/verify` | — | 10 / hour |
+
+```json
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "Too many requests. Try again later."
+  }
+}
+```
+
+```text
+HTTP/1.1 429 Too Many Requests
+Retry-After: 3600
+```
+
 ## Endpoint Contracts
 
 ### POST /api/auth/otp/request
@@ -317,6 +356,21 @@ Missing, invalid, expired, or already-used invite codes return the same response
 }
 ```
 
+#### Lockout
+
+If the email has accumulated 10 or more failed verify attempts in the last hour, the request is rejected without sending a new code:
+
+```json
+{
+  "error": {
+    "code": "otp_locked_out",
+    "message": "Too many attempts. Try again in an hour."
+  }
+}
+```
+
+The lockout lifts automatically as the oldest failed attempts age past the 1-hour window.
+
 ### POST /api/auth/otp/verify
 
 Verify an OTP and create a session.
@@ -349,14 +403,30 @@ Auth required: no
 
 #### Errors
 
+Invalid or expired code. `attempts_remaining` counts down across the rolling 1-hour window for the email:
+
 ```json
 {
   "error": {
     "code": "invalid_otp",
-    "message": "Code is invalid or expired."
+    "message": "Code is invalid or expired.",
+    "attempts_remaining": 7
   }
 }
 ```
+
+Email locked out after too many failed attempts:
+
+```json
+{
+  "error": {
+    "code": "otp_locked_out",
+    "message": "Too many attempts. Try again in an hour."
+  }
+}
+```
+
+After **10 failed verify attempts** for the same email in a rolling **1-hour** window, both `POST /api/auth/otp/request` and `POST /api/auth/otp/verify` return `otp_locked_out` (HTTP 422) until the oldest failures age out.
 
 ### DELETE /api/logout
 
@@ -452,6 +522,8 @@ Rules:
 
 - Exclude the current user.
 - Only return users with completed profiles.
+- `query` must be at least 2 characters. Shorter queries return `{"users": []}` (no error), keeping debounced typeahead flows simple.
+- Maximum of 20 results per request.
 
 ### GET /api/conversations
 
@@ -484,6 +556,10 @@ Auth required: yes
 }
 ```
 
+#### Pagination
+
+Returns up to **30 conversations** per request, ordered by `updated_at` descending (most recently active first). Cursor pagination via `before_id` and `limit` is planned — model the list as paginated from day one so adding params later is non-breaking.
+
 ### POST /api/conversations
 
 Create or return a direct conversation.
@@ -510,7 +586,8 @@ Auth required: yes
       "email": "friend@example.com",
       "display_name": "Friend",
       "bio": "Early user."
-    }
+    },
+    "last_message": null
   }
 }
 ```
@@ -520,6 +597,7 @@ Rules:
 - If the direct conversation already exists, return it.
 - A user cannot create a conversation with themselves.
 - Conversation responses expose `recipient`, not `members`, because the MVP only supports 1:1 chats.
+- `last_message` is always present. It is `null` for a freshly created conversation. The shape is identical across list, create, and show so clients can use a single response model.
 
 ### GET /api/conversations/:id
 
@@ -627,6 +705,7 @@ Rules:
 - Only members can list messages.
 - Default limit is 30.
 - Maximum limit is 100.
+- Message IDs are monotonically increasing 64-bit integers. `before_id` cursor pagination is safe to rely on for ordering and uniqueness.
 
 ### POST /api/conversations/:conversation_id/messages
 
@@ -700,9 +779,19 @@ Production:  wss://your-domain.com/cable?token=<session_token>
 
 Auth:
 
-```text
-token query param
+The connection authenticates via the `token` query param. The server hashes the raw token and looks up a non-expired `user_session`.
+
+If authentication fails (missing, malformed, expired, or unknown token), the server sends the standard Action Cable disconnect frame and closes the socket:
+
+```json
+{
+  "type": "disconnect",
+  "reason": "unauthorized",
+  "reconnect": false
+}
 ```
+
+Treat `reason: "unauthorized"` with `reconnect: false` as a permanent auth failure — re-authenticate the user rather than retrying the connection.
 
 Transport:
 
