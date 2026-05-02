@@ -13,7 +13,7 @@ COPY . .
 
 RUN mkdir -p tmp/pids
 
-EXPOSE $PORT
+EXPOSE 3000
 
 COPY entrypoint.sh /usr/bin/entrypoint.sh
 RUN chmod +x /usr/bin/entrypoint.sh

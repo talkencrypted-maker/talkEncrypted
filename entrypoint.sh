@@ -27,4 +27,5 @@ end
 "
 
 # Hand off to the main process (rails server or solid_queue:start)
+sleep 2
 exec "$@"
