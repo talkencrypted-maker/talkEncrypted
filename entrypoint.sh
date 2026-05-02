@@ -6,7 +6,7 @@ rm -f /app/tmp/pids/server.pid
 
 # Wait for PostgreSQL to be ready before doing anything
 echo "Waiting for PostgreSQL to be ready..."
-until pg_isready -h "$DB_HOST" -U "$DB_USER" -q; do
+until pg_isready -h "${DB_HOST:-$PGHOST}" -U "${DB_USER:-$PGUSER}" -q; do
   sleep 1
 done
 echo "PostgreSQL is ready."
