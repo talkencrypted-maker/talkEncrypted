@@ -19,4 +19,4 @@ COPY entrypoint.sh /usr/bin/entrypoint.sh
 RUN chmod +x /usr/bin/entrypoint.sh
 
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["sh", "-c", "bin/rails server -b 0.0.0.0 -p ${PORT:-3000}"]
+CMD ["sh", "-c", "bin/rails server -b 0.0.0.0 -p 3000"]
