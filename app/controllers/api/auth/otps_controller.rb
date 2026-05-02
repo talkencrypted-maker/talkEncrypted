@@ -7,6 +7,10 @@ class Api::Auth::OtpsController < ApplicationController
       return render_error(code: "invalid_request", message: "Email is required.", status: :bad_request)
     end
 
+    if EmailOtp.email_locked_out?(email)
+      return render_locked_out
+    end
+
     if invite_code_raw.present?
       invite_code = InviteCode.find_valid_by_raw_code(invite_code_raw)
 
@@ -42,15 +46,22 @@ class Api::Auth::OtpsController < ApplicationController
       return render_error(code: "invalid_request", message: "Email and code are required.", status: :bad_request)
     end
 
+    if EmailOtp.email_locked_out?(email)
+      return render_locked_out
+    end
+
     otp = EmailOtp.find_pending_for(email)
 
-    if otp.nil? || !otp.verify!(code)
-      return render json: {
-        error: {
-          code: "invalid_otp",
-          message: "Code is invalid or expired."
-        }
-      }, status: :unprocessable_entity
+    if otp.nil?
+      return render_invalid_otp(email)
+    end
+
+    case otp.verify(code)
+    when :expired
+      return render_invalid_otp(email)
+    when :invalid_code
+      # The increment may have just crossed the lockout threshold.
+      return EmailOtp.email_locked_out?(email) ? render_locked_out : render_invalid_otp(email)
     end
 
     if otp.purpose == "signup"
@@ -76,6 +87,25 @@ class Api::Auth::OtpsController < ApplicationController
   end
 
   private
+
+  def render_locked_out
+    render json: {
+      error: {
+        code: "otp_locked_out",
+        message: "Too many attempts. Try again in an hour."
+      }
+    }, status: :unprocessable_entity
+  end
+
+  def render_invalid_otp(email)
+    render json: {
+      error: {
+        code: "invalid_otp",
+        message: "Code is invalid or expired.",
+        attempts_remaining: EmailOtp.attempts_remaining_for(email)
+      }
+    }, status: :unprocessable_entity
+  end
 
   def user_json(user)
     {

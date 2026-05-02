@@ -20,7 +20,7 @@ class Api::UsersController < ApplicationController
   def search
     query = params[:query]&.strip
 
-    if query.blank?
+    if query.blank? || query.length < 2
       return render json: { users: [] }
     end
 

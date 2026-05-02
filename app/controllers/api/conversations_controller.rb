@@ -2,7 +2,11 @@ class Api::ConversationsController < ApplicationController
   include Authenticatable
 
   def index
-    members = current_user.conversation_members.includes(conversation: [ :messages, :users ])
+    members = current_user.conversation_members
+                          .joins(:conversation)
+                          .includes(conversation: [ :messages, :users ])
+                          .order("conversations.updated_at DESC")
+                          .limit(30)
 
 
     conversations = []
@@ -41,7 +45,7 @@ class Api::ConversationsController < ApplicationController
       conversation.conversation_members.create!(user: recipient)
     end
 
-    render json: { conversation: conversation_base_json(conversation) }, status: :created
+    render json: { conversation: conversation_list_json(conversation) }, status: :created
   end
 
   def show
