@@ -30,6 +30,19 @@ end
 "
 echo "Solid Queue check completed."
 
+echo "Checking Solid Cache tables..."
+bin/rails runner "
+begin
+  SolidCache::Entry.count
+  puts 'Solid Cache tables already exist, skipping.'
+rescue ActiveRecord::StatementInvalid
+  puts 'Creating Solid Cache tables...'
+  load Rails.root.join('db/cache_schema.rb')
+  puts 'Solid Cache tables created.'
+end
+"
+echo "Solid Cache check completed."
+
 echo "Starting Rails server on port ${PORT:-3000}..."
 # Hand off to the main process (rails server or solid_queue:start)
 exec "$@"
