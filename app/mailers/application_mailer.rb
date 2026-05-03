@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "onboarding@resend.dev"
+  default from: "talkencrypted@gmail.com"
   layout "mailer"
 end
