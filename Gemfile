@@ -23,6 +23,7 @@ gem "solid_cable"
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 gem "rack-attack"
+gem "resend"
 
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
