@@ -61,8 +61,9 @@ Rails.application.configure do
     user_name: "resend",
     password: Rails.application.credentials.dig(:resend, :api_key),
     address: "smtp.resend.com",
-    port: 587,
-    authentication: :plain
+    port: 465,
+    authentication: :plain,
+    ssl: true
   }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
