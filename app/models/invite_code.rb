@@ -13,6 +13,7 @@ class InviteCode < ApplicationRecord
   end
 
   def consume!(user)
+    return if reusable?
     update!(used_by_user: user, used_at: Time.current)
   end
 
