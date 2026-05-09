@@ -43,6 +43,19 @@ end
 "
 echo "Solid Cache check completed."
 
+echo "Checking Solid Cable tables..."
+bin/rails runner "
+begin
+  SolidCable::Message.count
+  puts 'Solid Cable tables already exist, skipping.'
+rescue ActiveRecord::StatementInvalid
+  puts 'Creating Solid Cable tables...'
+  load Rails.root.join('db/cable_schema.rb')
+  puts 'Solid Cable tables created.'
+end
+"
+echo "Solid Cable check completed."
+
 echo "Starting Rails server on port ${PORT:-3000}..."
 # Hand off to the main process (rails server or solid_queue:start)
 exec "$@"
